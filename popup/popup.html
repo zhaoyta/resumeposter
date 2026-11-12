@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Boss Match Helper</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Boss Match</h1>
+      <p class="sub">阶段1 · 配置自动保存</p>
+      <p class="sub tip-match">用法：Boss 职位页右下角 →「采集并匹配」出结果列表 → 再「自动打招呼」</p>
+    </header>
+
+    <section>
+      <label>DeepSeek API 地址</label>
+      <input id="apiBase" type="url" placeholder="https://api.deepseek.com" />
+    </section>
+
+    <section>
+      <label>API Key</label>
+      <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off" />
+    </section>
+
+    <section>
+      <label>模型</label>
+      <input id="model" type="text" placeholder="deepseek-chat" />
+    </section>
+
+    <section>
+      <label>匹配阈值（≥ 才建议投） <span id="thresholdVal">70</span></label>
+      <input id="matchThreshold" type="range" min="40" max="95" step="5" />
+    </section>
+
+    <section>
+      <label>投递条件描述</label>
+      <textarea
+        id="criteriaText"
+        rows="4"
+        placeholder="例：杭州/上海，Java 后端，3-5年，15-25K，不要外包驻场，互联网或ToB优先"
+      ></textarea>
+    </section>
+
+    <section>
+      <label>搜索关键词（多个会轮换，逗号或换行）</label>
+      <textarea
+        id="searchKeywords"
+        rows="3"
+        placeholder="例：Java&#10;后端开发&#10;Spring&#10;可点下方按钮按简历生成"
+      ></textarea>
+      <div class="actions" style="margin-top: 6px">
+        <button id="btnGenKeywords" class="secondary" type="button">根据简历生成关键词</button>
+      </div>
+    </section>
+
+    <section>
+      <label>排除关键词（逗号分隔）</label>
+      <input id="excludeKeywords" type="text" placeholder="外包,派遣,驻场" />
+    </section>
+
+    <section>
+      <label>简历文件（docx / txt / md）</label>
+      <input
+        id="resumeFile"
+        type="file"
+        accept=".docx,.txt,.md,.text,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      />
+      <p class="hint" id="resumeName">未选择文件</p>
+      <textarea id="resumeText" rows="6" placeholder="也可直接粘贴简历文本"></textarea>
+      <p class="hint" id="summaryPreview"></p>
+    </section>
+
+    <div class="actions">
+      <button id="btnSave" class="primary">保存配置</button>
+      <button id="btnSummarize" class="secondary">生成简历摘要</button>
+    </div>
+    <div class="actions">
+      <button id="btnMap" class="ghost">条件→筛选项预览</button>
+      <a id="linkHistory" href="../history/history.html" target="_blank">匹配与投递</a>
+    </div>
+
+    <pre id="status" class="status"></pre>
+    <pre id="filterPreview" class="preview" hidden></pre>
+
+    <script src="../lib/jszip.min.js"></script>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
