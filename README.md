@@ -13,6 +13,24 @@ Chrome 扩展：在 [Boss 直聘](https://www.zhipin.com) 上按条件筛选、�
 - **自动打招呼**：仅对「建议投」且未招呼过的职位，带每日上限与随机间隔
 - **匹配与投递**：本地查看匹配记录、已招呼结果（面板内可直达）
 
+## 界面预览
+
+Boss 页右下角操作面板：
+
+![操作面板](assets/screenshots/panel.png)
+
+扩展配置弹窗：
+
+![配置弹窗](assets/screenshots/popup.png)
+
+匹配记录：
+
+![匹配记录](assets/screenshots/match.png)
+
+投递结果：
+
+![投递结果](assets/screenshots/deliver.png)
+
 ## 安装
 
 1. 克隆本仓库  
@@ -57,7 +75,7 @@ resumeposter/
 ├── popup/                 # 配置弹窗
 ├── history/               # 匹配与投递本地页
 ├── lib/                   # DeepSeek、存储、简历解析
-├── assets/                # 图标
+├── assets/                # 图标与截图
 └── md/                    # 文档
 ```
 
