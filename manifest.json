@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Boss Match Helper",
-  "version": "0.3.9",
+  "version": "0.3.11",
   "description": "Boss 条件筛选 → 快速采集 → 批量匹配结果列表 → 可选自动打招呼",
   "permissions": ["storage", "activeTab", "scripting", "tabs"],
   "host_permissions": [

@@ -309,8 +309,8 @@
           <label>每日招呼上限 <input id="bmh-greet-limit" type="number" min="1" max="80" value="25" /></label>
         </div>
         <div class="bmh-row">
-          <label>间隔秒 min <input id="bmh-greet-min" type="number" min="20" max="300" value="50" /></label>
-          <label>max <input id="bmh-greet-max" type="number" min="30" max="600" value="100" /></label>
+          <label>间隔秒 min <input id="bmh-greet-min" type="number" min="1" max="300" value="5" /></label>
+          <label>max <input id="bmh-greet-max" type="number" min="1" max="600" value="10" /></label>
         </div>
         <p class="bmh-hint">打招呼会限速：随机间隔 + 每 5 次长休息，遇验证码自动停</p>
         <div class="bmh-actions">
@@ -378,8 +378,8 @@
   }
 
   function readPanelOptions() {
-    let minSec = Math.max(20, Number(document.getElementById('bmh-greet-min')?.value) || 50);
-    let maxSec = Math.max(30, Number(document.getElementById('bmh-greet-max')?.value) || 100);
+    let minSec = Math.max(1, Number(document.getElementById('bmh-greet-min')?.value) || 5);
+    let maxSec = Math.max(1, Number(document.getElementById('bmh-greet-max')?.value) || 10);
     if (maxSec < minSec) maxSec = minSec + 20;
     return {
       panelPages: Math.min(30, Math.max(1, Number(document.getElementById('bmh-pages')?.value) || 10)),
@@ -416,8 +416,8 @@
       if (doFilter) doFilter.checked = settings.panelDoFilter !== false;
       if (kw) kw.value = settings.searchKeywords || '';
       if (greetLimit) greetLimit.value = String(settings.greetDailyLimit ?? 25);
-      if (greetMin) greetMin.value = String(settings.greetIntervalMinSec ?? 50);
-      if (greetMax) greetMax.value = String(settings.greetIntervalMaxSec ?? 100);
+      if (greetMin) greetMin.value = String(settings.greetIntervalMinSec ?? 5);
+      if (greetMax) greetMax.value = String(settings.greetIntervalMaxSec ?? 10);
       if (Number(settings.panelPages ?? 0) <= 3) {
         void savePanelOptions();
       }

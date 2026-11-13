@@ -49,7 +49,7 @@ async function handleMessage(message) {
           ? {
               greetIntervalMinSec: Math.min(
                 300,
-                Math.max(20, Number(payload.greetIntervalMinSec) || 50)
+                Math.max(1, Number(payload.greetIntervalMinSec) || 5)
               )
             }
           : {}),
@@ -57,7 +57,7 @@ async function handleMessage(message) {
           ? {
               greetIntervalMaxSec: Math.min(
                 600,
-                Math.max(30, Number(payload.greetIntervalMaxSec) || 100)
+                Math.max(1, Number(payload.greetIntervalMaxSec) || 10)
               )
             }
           : {})
@@ -72,8 +72,8 @@ async function handleMessage(message) {
         used: stats.count,
         limit,
         remain: Math.max(0, limit - stats.count),
-        intervalMinSec: Number(settings.greetIntervalMinSec) || 50,
-        intervalMaxSec: Number(settings.greetIntervalMaxSec) || 100,
+        intervalMinSec: Number(settings.greetIntervalMinSec) || 5,
+        intervalMaxSec: Number(settings.greetIntervalMaxSec) || 10,
         burstEvery: Number(settings.greetBurstEvery) || 5,
         burstPauseSec: Number(settings.greetBurstPauseSec) || 180
       };

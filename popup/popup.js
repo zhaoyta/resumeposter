@@ -21,7 +21,7 @@ async function send(type, payload) {
 function fillForm(settings) {
   $('apiBase').value = settings.apiBase || '';
   $('apiKey').value = settings.apiKey || '';
-  $('model').value = settings.model || 'deepseek-chat';
+  $('model').value = settings.model || 'deepseek-flash';
   $('criteriaText').value = settings.criteriaText || '';
   $('searchKeywords').value = settings.searchKeywords || '';
   $('excludeKeywords').value = settings.excludeKeywords || '';
@@ -45,7 +45,7 @@ function readForm() {
   return {
     apiBase: $('apiBase').value.trim() || 'https://api.deepseek.com',
     apiKey: $('apiKey').value.trim(),
-    model: $('model').value.trim() || 'deepseek-chat',
+    model: $('model').value.trim() || 'deepseek-flash',
     criteriaText: $('criteriaText').value.trim(),
     searchKeywords: $('searchKeywords').value.trim(),
     excludeKeywords: $('excludeKeywords').value.trim(),
