@@ -43,7 +43,7 @@ async function handleMessage(message) {
         panelDoFilter: Boolean(payload?.panelDoFilter),
         ...(payload?.searchKeywords != null ? { searchKeywords: String(payload.searchKeywords) } : {}),
         ...(payload?.greetDailyLimit != null
-          ? { greetDailyLimit: Math.min(80, Math.max(1, Number(payload.greetDailyLimit) || 25)) }
+          ? { greetDailyLimit: Math.min(500, Math.max(1, Number(payload.greetDailyLimit) || 25)) }
           : {}),
         ...(payload?.greetIntervalMinSec != null
           ? {
@@ -74,8 +74,8 @@ async function handleMessage(message) {
         remain: Math.max(0, limit - stats.count),
         intervalMinSec: Number(settings.greetIntervalMinSec) || 5,
         intervalMaxSec: Number(settings.greetIntervalMaxSec) || 10,
-        burstEvery: Number(settings.greetBurstEvery) || 5,
-        burstPauseSec: Number(settings.greetBurstPauseSec) || 180
+        burstEvery: 0,
+        burstPauseSec: 0
       };
     }
 

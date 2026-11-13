@@ -306,13 +306,13 @@
           <button id="bmh-run" class="bmh-primary" type="button">采集并匹配</button>
         </div>
         <div class="bmh-row">
-          <label>每日招呼上限 <input id="bmh-greet-limit" type="number" min="1" max="80" value="25" /></label>
+          <label>每日招呼上限 <input id="bmh-greet-limit" type="number" min="1" max="500" value="25" /></label>
         </div>
         <div class="bmh-row">
           <label>间隔秒 min <input id="bmh-greet-min" type="number" min="1" max="300" value="5" /></label>
           <label>max <input id="bmh-greet-max" type="number" min="1" max="600" value="10" /></label>
         </div>
-        <p class="bmh-hint">打招呼会限速：随机间隔 + 每 5 次长休息，遇验证码自动停</p>
+        <p class="bmh-hint">打招呼按上方间隔限速，遇验证码自动停</p>
         <div class="bmh-actions">
           <button id="bmh-greet" class="bmh-primary" type="button" disabled>自动打招呼</button>
           <button id="bmh-stop" class="bmh-secondary bmh-danger" type="button" disabled>停止</button>
@@ -385,7 +385,7 @@
       panelPages: Math.min(30, Math.max(1, Number(document.getElementById('bmh-pages')?.value) || 10)),
       panelDoFilter: Boolean(document.getElementById('bmh-do-filter')?.checked),
       searchKeywords: document.getElementById('bmh-keywords')?.value || '',
-      greetDailyLimit: Math.min(80, Math.max(1, Number(document.getElementById('bmh-greet-limit')?.value) || 25)),
+      greetDailyLimit: Math.min(500, Math.max(1, Number(document.getElementById('bmh-greet-limit')?.value) || 25)),
       greetIntervalMinSec: minSec,
       greetIntervalMaxSec: maxSec
     };
@@ -873,7 +873,7 @@
     const maxSec = Math.max(quota.intervalMinSec, quota.intervalMaxSec);
     if (
       !confirm(
-        `将对 ${targets.length} 个未招呼的「建议投」自动沟通（今日剩余额度 ${quota.remain}/${quota.limit}）。\n间隔约 ${minSec}-${maxSec} 秒，每 ${quota.burstEvery} 次额外休息约 ${quota.burstPauseSec} 秒。\n成功后会在本地标记「已招呼」。继续？`
+        `将对 ${targets.length} 个未招呼的「建议投」自动沟通（今日剩余额度 ${quota.remain}/${quota.limit}）。\n间隔约 ${minSec}-${maxSec} 秒。\n成功后会在本地标记「已招呼」。继续？`
       )
     ) {
       return;
@@ -885,7 +885,6 @@
     let ok = 0;
     let skip = 0;
     let fail = 0;
-    let successStreak = 0;
 
     try {
       for (let i = 0; i < targets.length; i++) {
@@ -901,7 +900,6 @@
           const r = await greetOne(item);
           if (r?.ok) {
             ok += 1;
-            successStreak += 1;
             await markGreeted(item, 'ok', true);
           } else if (r?.skipped) {
             skip += 1;
@@ -925,17 +923,8 @@
 
         if (state.stop || i >= targets.length - 1) break;
 
-        // 防封：随机长间隔
         const pauseSec = rand(minSec, maxSec + 1);
-        await waitCountdown(pauseSec, `已处理 ${i + 1}/${targets.length}，限速等待`);
-
-        // 每 N 次成功后再多歇一会
-        if (successStreak > 0 && successStreak % quota.burstEvery === 0) {
-          await waitCountdown(
-            quota.burstPauseSec,
-            `已连续成功 ${successStreak} 次，额外休息防封`
-          );
-        }
+        await waitCountdown(pauseSec, `已处理 ${i + 1}/${targets.length}，间隔等待`);
       }
       const q2 = await send('GET_GREET_QUOTA');
       setStatus(
