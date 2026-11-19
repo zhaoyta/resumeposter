@@ -56,13 +56,15 @@ function renderMatch(records) {
 
   const total = records.length;
   const rec = records.filter((r) => r.recommend).length;
+  const greeted = records.filter((r) => r.greeted).length;
   const avg = total
     ? Math.round(records.reduce((s, r) => s + (Number(r.score) || 0), 0) / total)
     : 0;
 
   stats.innerHTML = `
-    <span>共 ${total} 条</span>
+    <span>库里 ${total}</span>
     <span>建议投 ${rec}</span>
+    <span>已投 ${greeted}</span>
     <span>平均分 ${avg}</span>
   `;
 
@@ -74,9 +76,11 @@ function renderMatch(records) {
   empty.hidden = true;
 
   tbody.innerHTML = records
-    .map((r) => {
+    .map((r, i) => {
       const cls = r.score >= 70 ? 'ok' : 'bad';
       return `<tr>
+        <td class="col-idx">${i + 1}</td>
+        <td class="col-jobid">${escapeHtml(r.jobId || '-')}</td>
         <td>${fmtTime(r.updatedAt || r.createdAt)}</td>
         <td class="score ${cls}">${r.score ?? '-'}</td>
         <td>${r.recommend ? '建议' : '跳过'}</td>
@@ -96,12 +100,12 @@ function renderDeliver(list) {
   const greeted = list
     .filter((r) => r.greeted)
     .sort((a, b) => (b.greetedAt || 0) - (a.greetedAt || 0));
-  const pending = list.filter((r) => r.recommend && !r.greeted).length;
+  const recommend = list.filter((r) => r.recommend).length;
 
   stats.innerHTML = `
-    <span>已招呼 ${greeted.length}</span>
-    <span>待招呼 ${pending}</span>
-    <span>结果池 ${list.length}</span>
+    <span>库里 ${list.length}</span>
+    <span>建议投 ${recommend}</span>
+    <span>已投 ${greeted.length}</span>
   `;
 
   if (!greeted.length) {
@@ -112,13 +116,15 @@ function renderDeliver(list) {
   empty.hidden = true;
 
   tbody.innerHTML = greeted
-    .map((r) => {
+    .map((r, i) => {
       const cls = r.score >= 70 ? 'ok' : 'bad';
       const status =
         r.greetStatus === 'already'
           ? '<span class="tag done">已沟通过</span>'
           : '<span class="tag done">已招呼</span>';
       return `<tr class="row-greeted">
+        <td class="col-idx">${i + 1}</td>
+        <td class="col-jobid">${escapeHtml(r.jobId || '-')}</td>
         <td>${fmtTime(r.greetedAt)}</td>
         <td>${status}</td>
         <td class="score ${cls}">${r.score ?? '-'}</td>

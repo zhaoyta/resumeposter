@@ -4,13 +4,16 @@ import {
   getMatchRecords,
   getMatchRecordsWithGreet,
   upsertMatchRecord,
+  upsertMatchRecordsBatch,
   clearMatchRecords,
   getResultList,
   saveResultList,
   clearResultList,
   getGreetStats,
   recordGreetSuccess,
-  markResultGreeted
+  markResultGreeted,
+  getPoolStats,
+  syncResultListFromMatches
 } from '../lib/storage.js';
 import {
   summarizeResume,
@@ -133,7 +136,6 @@ async function handleMessage(message) {
             missing: []
           };
           pre.push({ job, result });
-          await upsertMatchRecord(buildRecord(job, result, payload?.pageUrl));
         } else {
           needModel.push(job);
         }
@@ -160,7 +162,6 @@ async function handleMessage(message) {
             missing: []
           };
           batchResults.push({ job, result });
-          await upsertMatchRecord(buildRecord(job, result, payload?.pageUrl));
         }
       }
 
@@ -173,29 +174,21 @@ async function handleMessage(message) {
         }))
         .sort((a, b) => (b.score || 0) - (a.score || 0));
 
-      // 与已有结果合并；保留已招呼标记
-      const old = await getResultList();
-      const map = new Map(old.map((r) => [r.jobId || `${r.title}|${r.company}`, r]));
-      for (const r of rows) {
-        const key = r.jobId || `${r.title}|${r.company}`;
-        const prev = map.get(key);
-        map.set(key, {
-          ...r,
-          ...(prev?.greeted
-            ? {
-                greeted: prev.greeted,
-                greetedAt: prev.greetedAt,
-                greetStatus: prev.greetStatus
-              }
-            : {})
-        });
-      }
-      const all = [...map.values()].sort((a, b) => (b.score || 0) - (a.score || 0));
-      await saveResultList(all);
+      // 整批一次写入匹配库（按职位去重；无条数截断）
+      const write = await upsertMatchRecordsBatch(rows);
+      const synced = await syncResultListFromMatches();
+      const pool = await getPoolStats();
       return {
         batch: rows,
-        all,
-        recommendCount: all.filter((r) => r.recommend).length
+        all: synced,
+        recommendCount: pool.recommend,
+        pool,
+        write: {
+          before: write.before,
+          added: write.added,
+          updated: write.updated,
+          total: write.total
+        }
       };
     }
 
@@ -220,12 +213,16 @@ async function handleMessage(message) {
     case 'GET_MATCH_RECORDS':
       return getMatchRecordsWithGreet();
 
+    case 'GET_POOL_STATS':
+      return getPoolStats();
+
     case 'CLEAR_MATCH_RECORDS':
       await clearMatchRecords();
       return true;
 
     case 'GET_RESULT_LIST':
-      return getResultList();
+      // 与匹配库对齐，避免结果池截断后「建议投 300」和匹配页对不上
+      return syncResultListFromMatches();
 
     case 'SAVE_RESULT_LIST':
       return saveResultList(payload?.list || []);

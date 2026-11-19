@@ -112,6 +112,20 @@
   font: inherit;
 }
 
+.bmh-row-save {
+  align-items: center;
+}
+
+.bmh-save-inline {
+  flex: 0 0 auto;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .bmh-actions {
   display: flex;
   gap: 8px;
@@ -168,9 +182,11 @@
 }
 
 .bmh-list-summary {
-  margin: 0 0 4px;
-  color: var(--bmh-muted);
-  font-size: 11px;
+  margin: 0 0 6px;
+  color: var(--bmh-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .bmh-linkish {

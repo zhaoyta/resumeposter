@@ -305,14 +305,15 @@
         <div class="bmh-actions">
           <button id="bmh-run" class="bmh-primary" type="button">采集并匹配</button>
         </div>
-        <div class="bmh-row">
+        <div class="bmh-row bmh-row-save">
           <label>每日招呼上限 <input id="bmh-greet-limit" type="number" min="1" max="500" value="25" /></label>
+          <button id="bmh-save-greet" class="bmh-secondary bmh-save-inline" type="button">保存</button>
         </div>
         <div class="bmh-row">
           <label>间隔秒 min <input id="bmh-greet-min" type="number" min="1" max="300" value="5" /></label>
           <label>max <input id="bmh-greet-max" type="number" min="1" max="600" value="10" /></label>
         </div>
-        <p class="bmh-hint">打招呼按上方间隔限速，遇验证码自动停</p>
+        <p class="bmh-hint">上限/间隔点「保存」即可生效，与「自动打招呼」无关；今日已招呼按新上限显示</p>
         <div class="bmh-actions">
           <button id="bmh-greet" class="bmh-primary" type="button" disabled>自动打招呼</button>
           <button id="bmh-stop" class="bmh-secondary bmh-danger" type="button" disabled>停止</button>
@@ -341,19 +342,14 @@
     root.querySelector('#bmh-gen-kw').addEventListener('click', () => genKeywordsFromResume());
     root.querySelector('#bmh-run').addEventListener('click', () => runCollectAndMatch());
     root.querySelector('#bmh-greet').addEventListener('click', () => runAutoGreet());
+    root.querySelector('#bmh-save-greet').addEventListener('click', () => saveGreetQuotaOptions());
     root.querySelector('#bmh-stop').addEventListener('click', () => {
       state.stop = true;
       setStatus('正在停止…');
     });
 
-    for (const id of [
-      'bmh-pages',
-      'bmh-do-filter',
-      'bmh-keywords',
-      'bmh-greet-limit',
-      'bmh-greet-min',
-      'bmh-greet-max'
-    ]) {
+    // 采集相关仍自动保存；上限/间隔需点「保存上限与间隔」
+    for (const id of ['bmh-pages', 'bmh-do-filter', 'bmh-keywords']) {
       const el = root.querySelector(`#${id}`);
       el?.addEventListener('change', () => savePanelOptions());
       if (id !== 'bmh-do-filter') {
@@ -362,6 +358,58 @@
     }
 
     restorePanelAndResults();
+
+    // 弹窗改阈值 / 保存上限后，面板数字跟着刷新
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'local' || state.running) return;
+      if (!changes.resultList && !changes.settings && !changes.matchRecords) return;
+      void refreshPanelStats();
+    });
+  }
+
+  async function refreshPanelStats() {
+    try {
+      const list = await send('GET_RESULT_LIST');
+      await renderList(list);
+    } catch {
+      // ignore
+    }
+  }
+
+  /** 干净四件套：库里 / 建议投 / 已投 / 今日已投 · 上限 —— 一律读匹配库 */
+  async function renderCleanStats(pool, quota) {
+    const summary = document.getElementById('bmh-summary');
+    if (!summary) return;
+    const p = pool || { library: 0, recommend: 0, greeted: 0, pending: 0 };
+    const q = quota || { used: 0, limit: 0 };
+    summary.textContent = p.library
+      ? `库里 ${p.library} · 建议投 ${p.recommend} · 已投 ${p.greeted} · 今日已投 ${q.used} · 上限 ${q.limit}`
+      : '暂无结果，先「采集并匹配」';
+  }
+
+  /** 有待招呼且今日额度未满才可点；抬高上限保存后应立刻恢复 */
+  async function syncGreetButton(pendingOverride) {
+    const greet = document.getElementById('bmh-greet');
+    if (!greet) return { pending: 0, remain: 0, used: 0, limit: 0 };
+    const pending =
+      pendingOverride != null
+        ? pendingOverride
+        : state.results.filter((r) => r.recommend && !r.greeted).length;
+    let used = 0;
+    let limit = 0;
+    let remain = 0;
+    try {
+      const q = await send('GET_GREET_QUOTA');
+      used = q.used;
+      limit = q.limit;
+      remain = q.remain;
+    } catch {
+      remain = pending > 0 ? 1 : 0;
+    }
+    if (!state.running) {
+      greet.disabled = pending === 0 || remain <= 0;
+    }
+    return { pending, remain, used, limit };
   }
 
   function parseKeywordList(text) {
@@ -395,8 +443,37 @@
     try {
       const opts = readPanelOptions();
       await send('SAVE_PANEL_OPTIONS', opts);
+      return opts;
     } catch {
-      // ignore
+      return null;
+    }
+  }
+
+  async function saveGreetQuotaOptions() {
+    // 与「自动打招呼」解耦：额度满导致招呼灰掉时，仍可抬高上限并恢复可点
+    const btn = document.getElementById('bmh-save-greet');
+    if (btn) btn.disabled = true;
+    try {
+      const opts = await savePanelOptions();
+      if (!opts) {
+        setStatus('保存失败，请重试');
+        return;
+      }
+      const limitEl = document.getElementById('bmh-greet-limit');
+      const minEl = document.getElementById('bmh-greet-min');
+      const maxEl = document.getElementById('bmh-greet-max');
+      if (limitEl) limitEl.value = String(opts.greetDailyLimit);
+      if (minEl) minEl.value = String(opts.greetIntervalMinSec);
+      if (maxEl) maxEl.value = String(opts.greetIntervalMaxSec);
+
+      const pool = await send('GET_POOL_STATS');
+      const q = await syncGreetButton(pool.pending);
+      await renderCleanStats(pool, q);
+      setStatus(`已保存上限 ${q.limit}，间隔 ${opts.greetIntervalMinSec}-${opts.greetIntervalMaxSec}s`);
+    } catch (err) {
+      setStatus(`保存上限失败：${err.message || err}`);
+    } finally {
+      if (btn) btn.disabled = false;
     }
   }
 
@@ -423,21 +500,8 @@
       }
 
       const list = await send('GET_RESULT_LIST');
-      renderList(list);
-      let quotaTip = '';
-      try {
-        const q = await send('GET_GREET_QUOTA');
-        quotaTip = `｜今日已招呼 ${q.used}/${q.limit}`;
-      } catch {
-        // ignore
-      }
-      if (list?.length) {
-        setStatus(
-          `已恢复上次结果 ${list.length} 条（建议投 ${list.filter((r) => r.recommend).length}）${quotaTip}`
-        );
-      } else {
-        setStatus(`可填多个关键词轮换搜索；筛选 → 滚动采集 → 批量打分${quotaTip}`);
-      }
+      await renderList(list);
+      setStatus(list?.length ? '已恢复本地库' : '可填多个关键词轮换搜索；筛选 → 滚动采集 → 批量打分');
     } catch (err) {
       setStatus(friendlyError(err));
     }
@@ -492,14 +556,18 @@
       const el = document.getElementById(id);
       if (!el) continue;
       if (id === 'bmh-greet') {
-        el.disabled =
-          busy || !state.results.some((r) => r.recommend && !r.greeted);
+        // 运行中先禁用；结束后由 syncGreetButton 按额度+待招呼恢复
+        el.disabled = true;
       } else {
         el.disabled = busy;
       }
     }
     const stop = document.getElementById('bmh-stop');
     if (stop) stop.disabled = !busy;
+    // 上限保存始终可点，不跟打招呼按钮绑死
+    const saveGreet = document.getElementById('bmh-save-greet');
+    if (saveGreet) saveGreet.disabled = false;
+    if (!busy) void syncGreetButton();
   }
 
   async function genKeywordsFromResume() {
@@ -519,28 +587,26 @@
     }
   }
 
-  function renderList(list) {
+  async function renderList(list) {
     state.results = list || [];
-    const summary = document.getElementById('bmh-summary');
-    const rec = state.results.filter((r) => r.recommend).length;
-    const greeted = state.results.filter((r) => r.greeted).length;
-    const pending = state.results.filter((r) => r.recommend && !r.greeted).length;
-
-    if (summary) {
-      summary.textContent = state.results.length
-        ? `待招呼 ${pending} · 已招呼 ${greeted} · 建议投 ${rec}`
-        : '暂无结果，先「采集并匹配」';
+    let pool = { library: 0, recommend: 0, greeted: 0, pending: 0 };
+    try {
+      pool = await send('GET_POOL_STATS');
+    } catch {
+      // fallback：仅在匹配库读失败时用当前列表估
+      pool = {
+        library: state.results.length,
+        recommend: state.results.filter((r) => r.recommend).length,
+        greeted: state.results.filter((r) => r.greeted).length,
+        pending: state.results.filter((r) => r.recommend && !r.greeted).length
+      };
     }
-
-    const greet = document.getElementById('bmh-greet');
-    if (greet && !state.running) greet.disabled = pending === 0;
-    setStatus(
-      `结果 ${state.results.length} 条｜建议投 ${rec}｜已招呼 ${greeted}｜待招呼 ${pending}`
-    );
+    const q = await syncGreetButton(pool.pending);
+    await renderCleanStats(pool, q);
   }
 
   async function markGreeted(item, greetStatus = 'ok', countSuccess = true) {
-    const list = await send('MARK_GREETED', {
+    await send('MARK_GREETED', {
       jobId: item.jobId || '',
       title: item.title || '',
       company: item.company || '',
@@ -553,7 +619,9 @@
       greetStatus,
       countSuccess
     });
-    renderList(list);
+    // 重新从匹配库同步，避免结果池与库统计分叉
+    const list = await send('GET_RESULT_LIST');
+    await renderList(list);
     return list;
   }
 
@@ -811,11 +879,15 @@
         return;
       }
 
-      setStatus(`采集 ${all.length} 条（${keywords.length} 个关键词），批量匹配中…`);
-      const data = await send('MATCH_JOBS_BATCH', { jobs: all, pageUrl: location.href });
-      renderList(data.all || data.batch || []);
       setStatus(
-        `完成：本批 ${data.batch?.length || 0}，结果池 ${data.all?.length || 0}，建议投 ${data.recommendCount || 0}`
+        `采集 ${all.length} 条（${keywords.length} 个关键词），批量匹配中…（完成后才写入库，下方「库里」仍是旧数）`
+      );
+      const data = await send('MATCH_JOBS_BATCH', { jobs: all, pageUrl: location.href });
+      await renderList(data.all || data.batch || []);
+      const pool = data.pool || {};
+      const w = data.write || {};
+      setStatus(
+        `完成：本批 ${data.batch?.length || 0}｜新增 ${w.added ?? '?'}｜更新 ${w.updated ?? '?'}｜库里 ${w.total ?? pool.library ?? '?'}｜建议投 ${pool.recommend ?? data.recommendCount ?? 0}`
       );
     } catch (err) {
       setStatus(friendlyError(err));
